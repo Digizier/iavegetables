@@ -938,15 +938,160 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => openProductModal()}
-                  className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-black py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer whitespace-nowrap"
+                  className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white text-xs font-black py-3 sm:py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add Fresh Vegetable</span>
+                  <span>+ Add Fresh Vegetable</span>
                 </button>
               </div>
 
-              {/* Products Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              {/* Mobile Card List View (Phones & Tablets - Zero horizontal scrolling!) */}
+              <div className="md:hidden space-y-3">
+                {products
+                  .filter((p) => {
+                    const matchCat =
+                      selectedCategoryFilter === 'all' || p.category_id === selectedCategoryFilter;
+                    const matchQ =
+                      !productSearch.trim() ||
+                      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                      p.name_urdu?.toLowerCase().includes(productSearch.toLowerCase());
+                    return matchCat && matchQ;
+                  })
+                  .map((product) => {
+                    const cat = categories.find((c) => c.id === product.category_id);
+                    return (
+                      <div
+                        key={product.id}
+                        className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3"
+                      >
+                        {/* Top: Image, Names & Badges */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shrink-0 relative">
+                            <img
+                              src={product.thumbnail_url}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e: any) => {
+                                e.target.src =
+                                  'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80';
+                              }}
+                            />
+                            {product.is_featured && (
+                              <span className="absolute bottom-0 inset-x-0 bg-amber-500/90 text-brand-950 font-black text-[9px] text-center py-0.5">
+                                Featured
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-1">
+                              <h4 className="font-black text-gray-900 text-sm leading-tight truncate">
+                                {product.name}
+                              </h4>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                                  product.is_active
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {product.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+
+                            {product.name_urdu && (
+                              <div className="font-urdu text-base font-bold text-emerald-800 leading-snug">
+                                {product.name_urdu}
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
+                              <span className="bg-gray-100 px-2 py-0.5 rounded-md font-semibold text-gray-700">
+                                {cat?.name || 'Uncategorized'}
+                              </span>
+                              <span>•</span>
+                              <span
+                                className={`font-bold ${
+                                  product.stock < 15 ? 'text-red-600' : 'text-gray-700'
+                                }`}
+                              >
+                                Stock: {product.stock} {product.unit}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description snippet */}
+                        {product.description ? (
+                          <p className="text-[11px] text-gray-500 line-clamp-2 bg-slate-50 p-2 rounded-xl border border-slate-100 leading-relaxed">
+                            {product.description}
+                          </p>
+                        ) : (
+                          <div className="text-[10px] text-gray-400 italic">No description added</div>
+                        )}
+
+                        {/* Price & Weight Options */}
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
+                          <div>
+                            <span className="text-[10px] text-gray-400 block font-semibold">BASE RATE</span>
+                            <span className="font-black text-brand-900 text-sm">
+                              Rs. {product.price} <span className="text-xs font-semibold text-gray-500">/ {product.unit}</span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            {product.weight_options?.map((w) => (
+                              <span
+                                key={w}
+                                className="bg-gray-100 text-gray-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                              >
+                                {w}{product.unit}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons Bar: Prominent, easy-to-tap side-by-side buttons */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                          <button
+                            type="button"
+                            onClick={() => openProductModal(product)}
+                            className="py-2.5 px-3 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold text-xs flex items-center justify-center gap-2 border border-brand-200 active:scale-98 transition-all cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4 text-brand-600" />
+                            <span>Edit Vegetable</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => requestDeleteProduct(product)}
+                            className="py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs flex items-center justify-center gap-2 border border-red-200 active:scale-98 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {products.filter((p) => {
+                  const matchCat =
+                    selectedCategoryFilter === 'all' || p.category_id === selectedCategoryFilter;
+                  const matchQ =
+                    !productSearch.trim() ||
+                    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                    p.name_urdu?.toLowerCase().includes(productSearch.toLowerCase());
+                  return matchCat && matchQ;
+                }).length === 0 && (
+                  <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 text-gray-500 text-xs">
+                    No vegetables found matching your search or category filter.
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop Products Table (Large Screens) */}
+              <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 border-b border-slate-200 text-gray-600 uppercase font-black tracking-wider text-[10px]">
@@ -1075,24 +1220,45 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Modal: Add / Edit Product */}
+              {/* Mobile Floating Action Button (FAB) for 1-Tap Add Vegetable */}
+              <button
+                type="button"
+                onClick={() => openProductModal()}
+                className="sm:hidden fixed bottom-6 right-5 z-40 bg-brand-600 hover:bg-brand-700 text-white font-black py-3 px-4 rounded-full shadow-2xl flex items-center gap-2 active:scale-95 transition-all border-2 border-white/90"
+                title="Add Fresh Vegetable"
+                aria-label="Add Fresh Vegetable"
+              >
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+                <span className="text-xs font-bold">Add Vegetable</span>
+              </button>
+
+              {/* Modal: Add / Edit Product (Bottom Sheet on Mobile, Centered Card on Desktop) */}
               {editingProduct && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-                  <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 space-y-4 my-8">
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                      <h3 className="font-black text-gray-900 text-base">
-                        {editingProduct.id ? 'Edit Vegetable Produce' : 'Add Fresh Vegetable to Catalog'}
-                      </h3>
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
+                  <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl border border-gray-100 flex flex-col max-h-[92vh] sm:max-h-[90vh] my-0 sm:my-8 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+                    {/* Mobile Drawer Pull Indicator */}
+                    <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2.5 sm:hidden shrink-0" />
+
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
+                      <div>
+                        <h3 className="font-black text-gray-900 text-base">
+                          {editingProduct.id ? 'Edit Vegetable Produce' : 'Add Fresh Vegetable to Catalog'}
+                        </h3>
+                        <p className="text-[11px] text-gray-500">
+                          {editingProduct.id ? 'Update produce details, rates & photos' : 'Add a new farm-fresh vegetable item'}
+                        </p>
+                      </div>
                       <button
                         type="button"
                         onClick={() => setEditingProduct(null)}
-                        className="p-1 rounded-full text-gray-400 hover:text-gray-600 cursor-pointer"
+                        className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
+                        aria-label="Close"
                       >
                         <X className="w-5 h-5" />
                       </button>
                     </div>
 
-                    <form onSubmit={handleSaveProduct} className="space-y-4">
+                    <form id="product-modal-form" onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto space-y-4 py-3 pr-1 -mr-1">
                       {/* Multiple Images Uploader */}
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                         <MultipleImageUploader
@@ -1278,23 +1444,25 @@ export default function AdminPage() {
                           <span className="text-xs font-bold text-gray-800">Feature on Front Page</span>
                         </label>
                       </div>
-
-                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-                        <button
-                          type="button"
-                          onClick={() => setEditingProduct(null)}
-                          className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-5 py-2 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-md transition-all cursor-pointer"
-                        >
-                          Save Vegetable
-                        </button>
-                      </div>
                     </form>
+
+                    {/* Sticky Action Footer Bar (Always accessible without scrolling) */}
+                    <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs pt-3 pb-2 sm:pb-0 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0 z-10">
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct(null)}
+                        className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl cursor-pointer transition-colors text-center"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        form="product-modal-form"
+                        className="flex-1 sm:flex-none px-6 py-2.5 text-xs font-black bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-md transition-all cursor-pointer active:scale-98 text-center"
+                      >
+                        Save Vegetable
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

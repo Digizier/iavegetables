@@ -134,6 +134,16 @@ export default function Footer() {
                 <span>👍 Facebook: <strong>I.A Vegetables Supplier</strong></span>
               </a>
             </div>
+            <div>
+              <a
+                href="https://www.instagram.com/imranabbasi6184?utm_source=qr&igsi=bmJyNWNwYjUwYm1i"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-pink-400 flex items-center gap-1.5 transition-colors"
+              >
+                <span>📸 Instagram: <strong>@imranabbasi6184</strong></span>
+              </a>
+            </div>
           </div>
 
           <div className="pt-2">

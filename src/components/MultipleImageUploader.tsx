@@ -140,27 +140,29 @@ export default function MultipleImageUploader({
                 </div>
               )}
 
-              {/* Hover actions overlay */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-1.5">
-                <div className="w-full flex justify-end">
+              {/* Actions overlay: visible on mobile, hover on desktop */}
+              <div className="absolute inset-0 bg-black/30 sm:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-1.5 pointer-events-none">
+                <div className="w-full flex justify-end pointer-events-auto">
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(idx)}
-                    className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs shadow-xs cursor-pointer"
+                    className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs shadow-md cursor-pointer active:scale-90 transition-transform"
                     title="Delete photo"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 {!isCover && (
-                  <button
-                    type="button"
-                    onClick={() => handleSetCover(imgUrl)}
-                    className="w-full bg-white hover:bg-brand-50 text-gray-900 hover:text-brand-700 text-[10px] font-bold py-1 rounded shadow-xs text-center transition-colors cursor-pointer"
-                  >
-                    Set as Main
-                  </button>
+                  <div className="w-full pointer-events-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleSetCover(imgUrl)}
+                      className="w-full bg-white/95 hover:bg-brand-50 text-gray-900 hover:text-brand-700 text-[10px] font-bold py-1 rounded-md shadow-sm text-center transition-colors cursor-pointer active:scale-95"
+                    >
+                      Set Main
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
