@@ -8,6 +8,7 @@ import ProductCard from '../components/ProductCard';
 import ShopShowcase from '../components/ShopShowcase';
 import LocationSection from '../components/LocationSection';
 import SocialShowcase from '../components/SocialShowcase';
+import FaqSection from '../components/FaqSection';
 import { getCategories, getProducts, getShopSettings, getHeroBanner } from '../lib/db';
 import { Category, Product, ShopSettings, HeroBanner } from '../lib/types';
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_HERO } from '../lib/seedData';
@@ -134,7 +135,7 @@ export default function HomePage() {
           <div className="absolute right-0 bottom-0 top-0 w-1/2 opacity-20 lg:opacity-35 pointer-events-none hidden sm:block">
             <img
               src="/images/logo.png"
-              alt="Produce"
+              alt="I.A Vegetables Supplier Karachi - Fresh Produce Since 1990"
               className="w-full h-full object-contain object-right-bottom p-6"
             />
           </div>
@@ -272,6 +273,9 @@ export default function HomePage() {
 
       {/* TikTok Reels & Social Showcase (@i.a.vegetables.su) */}
       <SocialShowcase />
+
+      {/* Answer Engine Optimization (AEO) FAQ Section with FAQPage Schema */}
+      <FaqSection />
 
       {/* Farm to Table Trust Badges (Fresh Basket Style) */}
       <section className="max-w-7xl mx-auto px-4 py-8">

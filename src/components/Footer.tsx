@@ -33,7 +33,7 @@ export default function Footer() {
           <div className="flex items-center gap-3">
             <img
               src="/images/logo.png"
-              alt="I.A Vegetables Supplier"
+              alt="I.A Vegetables Supplier Karachi Logo"
               className="h-12 w-auto object-contain bg-white rounded-xl p-1"
             />
             <div>
@@ -166,6 +166,7 @@ export default function Footer() {
         <div className="flex items-center gap-4">
           <Link href="/shop" className="hover:text-white transition-colors">Catalog</Link>
           <Link href="/#store-location" className="hover:text-white transition-colors">Shop Location</Link>
+          <Link href="/#faqs" className="hover:text-white transition-colors">FAQs</Link>
           <Link href="/admin" prefetch={false} className="hover:text-white transition-colors">Admin Panel</Link>
         </div>
       </div>

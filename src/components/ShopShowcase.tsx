@@ -20,7 +20,7 @@ export default function ShopShowcase({ settings }: ShopShowcaseProps) {
             <div className="relative rounded-3xl overflow-hidden shadow-xl border-4 border-white bg-gray-100 group">
               <img
                 src="/images/shop-front.jpg"
-                alt="I. A Vegetable Shop Karachi"
+                alt="I.A Vegetables Physical Storefront - SITE Town Keamari Karachi"
                 className="w-full h-auto object-cover group-hover:scale-102 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-5 text-white">

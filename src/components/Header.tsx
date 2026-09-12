@@ -147,7 +147,7 @@ export default function Header({ onOpenCart }: HeaderProps) {
           <Link href="/" className="flex items-center gap-2.5">
             <img
               src="/images/logo.png"
-              alt="I.A Vegetables Supplier"
+              alt="I.A Vegetables Supplier Karachi Logo"
               className="h-11 w-auto object-contain"
             />
             <div className="hidden sm:block">
@@ -189,7 +189,7 @@ export default function Header({ onOpenCart }: HeaderProps) {
                 {searchResults.map((item) => (
                   <Link
                     key={item.id}
-                    href={`/product?id=${encodeURIComponent(item.id)}`}
+                    href={`/product/${encodeURIComponent(item.id)}/`}
                     onClick={() => {
                       setIsSearching(false);
                       setSearchQuery('');
@@ -199,7 +199,7 @@ export default function Header({ onOpenCart }: HeaderProps) {
                     <div className="flex items-center gap-3">
                       <img
                         src={item.thumbnail_url}
-                        alt={item.name}
+                        alt={`${item.name} - Fresh Vegetable Karachi`}
                         className="w-10 h-10 object-cover rounded-lg"
                       />
                       <div>

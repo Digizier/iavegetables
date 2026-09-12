@@ -3,19 +3,158 @@ import '../styles/globals.css';
 import ClientLayout from '../components/ClientLayout';
 
 export const metadata: Metadata = {
-  title: 'I.A Vegetables Supplier | Fresh Farm Produce Karachi (Since 1990)',
-  description: 'Karachi wholesale & retail fresh vegetable supplier. Order daily mandi vegetables online with same-day doorstep delivery. NTN # 4260196-7.',
+  metadataBase: new URL('https://www.iavegetables.com'),
+  title: {
+    default: 'I.A Vegetables Supplier Karachi | Fresh Farm Produce & Wholesale Mandi Rates',
+    template: '%s | I.A Vegetables Supplier Karachi',
+  },
+  description: 'Karachi wholesale & retail fresh vegetable supplier since 1990. Hand-picked morning mandi produce, sorted and delivered fresh daily across SITE Town, Clifton, DHA, Gulshan, Malir and all Karachi areas. NTN # 4260196-7.',
+  applicationName: 'I.A Vegetables Supplier',
+  authors: [{ name: 'I.A Vegetables Supplier', url: 'https://www.iavegetables.com/' }],
+  generator: 'Next.js',
+  keywords: [
+    'vegetable supplier karachi',
+    'fresh vegetables delivery karachi',
+    'sabzi mandi karachi online',
+    'wholesale vegetable supplier karachi',
+    'buy vegetables online karachi',
+    'fresh farm vegetables karachi',
+    'daily mandi rates karachi',
+    'aloo piyaz tamatar delivery karachi',
+    'vegetable delivery clifton dha',
+    'vegetable delivery gulshan karachi',
+    'site town vegetable supplier',
+    'I.A vegetables supplier',
+    'تازہ سبزیاں کراچی',
+    'آن لائن سبزی منڈی کراچی',
+    'سبزی منڈی ہول سیل ریٹ'
+  ],
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: '/favicon.png',
     apple: '/favicon.png',
+  },
+  openGraph: {
+    title: 'I.A Vegetables Supplier Karachi | Fresh Farm Produce & Wholesale Mandi Rates',
+    description: 'Trusted fresh vegetable supplier in Karachi since 1990. Fresh morning harvest delivered daily across Karachi with 100% quality guarantee. NTN # 4260196-7.',
+    url: 'https://www.iavegetables.com/',
+    siteName: 'I.A Vegetables Supplier',
+    images: [
+      {
+        url: '/images/logo.png',
+        width: 600,
+        height: 600,
+        alt: 'I.A Vegetables Supplier Karachi - Fresh Farm Produce',
+      },
+    ],
+    locale: 'en_PK',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'I.A Vegetables Supplier Karachi | Fresh Farm Produce',
+    description: 'Fresh farm-picked vegetables delivered daily across Karachi at wholesale mandi rates. NTN # 4260196-7.',
+    images: ['/images/logo.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5,
   themeColor: '#16a34a',
+};
+
+const jsonLdData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': ['GroceryStore', 'LocalBusiness'],
+      '@id': 'https://www.iavegetables.com/#organization',
+      name: 'I.A Vegetables Supplier',
+      alternateName: 'I.A Vegetables Shop Karachi',
+      legalName: 'I.A Vegetables Supplier',
+      url: 'https://www.iavegetables.com/',
+      logo: 'https://www.iavegetables.com/images/logo.png',
+      image: 'https://www.iavegetables.com/images/shop-front.jpg',
+      description: 'Karachi trusted fresh farm vegetable supplier since 1990. Providing daily morning mandi harvest with doorstep delivery to households, restaurants, caterers, and canteens across Karachi.',
+      taxID: '4260196-7',
+      telephone: '+923413989260',
+      priceRange: 'PKR',
+      currenciesAccepted: 'PKR',
+      paymentAccepted: 'Cash on Delivery, JazzCash, EasyPaisa, Bank Transfer',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: 'I.A vegetables shop, SITE Town, Keamari District, Near Bizabay',
+        addressLocality: 'Karachi',
+        addressRegion: 'Sindh',
+        postalCode: '75020',
+        addressCountry: 'PK',
+      },
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: 24.8882505,
+        longitude: 66.9850563,
+      },
+      hasMap: 'https://www.google.com/maps/place/I.A+vegetables+shop/@24.8882505,66.9850563,21z/data=!4m6!3m5!1s0x3eb3150079cc1185:0x28632361d3a85fb9!8m2!3d24.8882505!4d66.9850563!16s%2Fg%2F11yx7kv0rs',
+      openingHoursSpecification: [
+        {
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+          opens: '07:00',
+          closes: '22:00',
+        },
+      ],
+      areaServed: [
+        { '@type': 'City', name: 'Karachi' },
+        { '@type': 'Place', name: 'SITE Town' },
+        { '@type': 'Place', name: 'Clifton' },
+        { '@type': 'Place', name: 'DHA' },
+        { '@type': 'Place', name: 'Gulshan-e-Iqbal' },
+        { '@type': 'Place', name: 'North Nazimabad' },
+        { '@type': 'Place', name: 'Saddar' },
+        { '@type': 'Place', name: 'Malir' },
+        { '@type': 'Place', name: 'Korangi' },
+        { '@type': 'Place', name: 'PECHS' },
+        { '@type': 'Place', name: 'Gulistan-e-Johar' },
+        { '@type': 'Place', name: 'Bahria Town Karachi' },
+      ],
+      sameAs: [
+        'https://www.facebook.com/p/IA-Vegetables-Supplier-61585790161272/',
+        'https://www.tiktok.com/@i.a.vegetables.su',
+        'https://www.instagram.com/imranabbasi6184',
+      ],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': 'https://www.iavegetables.com/#website',
+      url: 'https://www.iavegetables.com/',
+      name: 'I.A Vegetables Supplier',
+      description: 'Karachi fresh farm vegetable supplier online delivery and wholesale mandi rates',
+      publisher: {
+        '@id': 'https://www.iavegetables.com/#organization',
+      },
+      inLanguage: ['en-PK', 'ur-PK'],
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://www.iavegetables.com/shop/?q={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -27,6 +166,17 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.png" />
+        {/* Local Karachi GEO Meta Tags */}
+        <meta name="geo.region" content="PK-SD" />
+        <meta name="geo.placename" content="Karachi, Sindh, Pakistan" />
+        <meta name="geo.position" content="24.88825;66.985056" />
+        <meta name="ICBM" content="24.88825, 66.985056" />
+
+        {/* Global Structured Data (JSON-LD) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function() {

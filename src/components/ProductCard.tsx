@@ -100,12 +100,12 @@ export default function ProductCard({ product, onOpenCart }: ProductCardProps) {
 
       {/* Image Container with subtle hover zoom - Click opens Product Detail */}
       <Link
-        href={`/product?id=${encodeURIComponent(product.id)}`}
+        href={`/product/${encodeURIComponent(product.id)}/`}
         className="relative aspect-square w-full rounded-xl overflow-hidden bg-gray-50 mb-2.5 flex items-center justify-center block cursor-pointer"
       >
         <img
           src={product.thumbnail_url}
-          alt={product.name}
+          alt={`${product.name} ${product.name_urdu ? `(${product.name_urdu})` : ''} - Fresh Vegetable Karachi`}
           loading="lazy"
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
@@ -118,7 +118,7 @@ export default function ProductCard({ product, onOpenCart }: ProductCardProps) {
       {/* Product Information */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
-          <Link href={`/product?id=${encodeURIComponent(product.id)}`} className="block">
+          <Link href={`/product/${encodeURIComponent(product.id)}/`} className="block">
             <h3 className="font-bold text-gray-900 text-xs sm:text-sm line-clamp-1 hover:text-brand-700 transition-colors">
               {product.name}
             </h3>
