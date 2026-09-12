@@ -9,29 +9,45 @@ import ShopShowcase from '../components/ShopShowcase';
 import LocationSection from '../components/LocationSection';
 import SocialShowcase from '../components/SocialShowcase';
 import FaqSection from '../components/FaqSection';
-import { getCategories, getProducts, getShopSettings, getHeroBanner } from '../lib/db';
+import { 
+  getCategories, 
+  getProducts, 
+  getShopSettings, 
+  getHeroBanner, 
+  getLocalCategories, 
+  getLocalProducts, 
+  getLocalSettings, 
+  getLocalHeroBanner 
+} from '../lib/db';
 import { Category, Product, ShopSettings, HeroBanner } from '../lib/types';
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_HERO } from '../lib/seedData';
 
 export default function HomePage() {
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [settings, setSettings] = useState<ShopSettings>(INITIAL_SETTINGS);
-  const [hero, setHero] = useState<HeroBanner>(INITIAL_HERO);
+  const [categories, setCategories] = useState<Category[]>(() => getLocalCategories());
+  const [products, setProducts] = useState<Product[]>(() => getLocalProducts());
+  const [settings, setSettings] = useState<ShopSettings>(() => getLocalSettings());
+  const [hero, setHero] = useState<HeroBanner>(() => getLocalHeroBanner());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
+    // Instant re-read from local storage upon mount to avoid SSR hydration mismatch
+    setCategories(getLocalCategories());
+    setProducts(getLocalProducts());
+    setSettings(getLocalSettings());
+    setHero(getLocalHeroBanner());
+
+    // Background asynchronous revalidation with Supabase
     Promise.all([
       getCategories(),
       getProducts(),
       getShopSettings(),
       getHeroBanner(),
     ]).then(([catData, prodData, settData, heroData]) => {
-      setCategories(catData);
-      setProducts(prodData);
-      setSettings(settData);
-      setHero(heroData);
+      if (catData && catData.length > 0) setCategories(catData);
+      if (prodData && prodData.length > 0) setProducts(prodData);
+      if (settData) setSettings(settData);
+      if (heroData) setHero(heroData);
       setLoading(false);
     });
 

@@ -1,12 +1,38 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import { INITIAL_PRODUCTS } from '../../../lib/seedData';
+import { supabase } from '../../../lib/supabase';
 import ProductDetailClient from './ProductDetailClient';
 
-export function generateStaticParams() {
-  return INITIAL_PRODUCTS.map((product) => ({
-    id: product.id,
-  }));
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+  const ids = new Set<string>();
+
+  // Include seed products
+  INITIAL_PRODUCTS.forEach((product) => {
+    if (product.id) ids.add(product.id);
+    if (product.slug) ids.add(product.slug);
+  });
+
+  // Query Supabase for all active production items
+  try {
+    const { data } = await supabase
+      .from('products')
+      .select('id, slug')
+      .eq('is_active', true);
+
+    if (data && data.length > 0) {
+      data.forEach((p) => {
+        if (p.id) ids.add(p.id);
+        if (p.slug) ids.add(p.slug);
+      });
+    }
+  } catch (e) {
+    console.warn('generateStaticParams supabase fallback:', e);
+  }
+
+  return Array.from(ids).map((id) => ({ id }));
 }
 
 export async function generateMetadata({
@@ -15,7 +41,18 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const product = INITIAL_PRODUCTS.find((p) => p.id === id || p.slug === id);
+  let product = INITIAL_PRODUCTS.find((p) => p.id === id || p.slug === id);
+
+  if (!product) {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .or(`id.eq.${id},slug.eq.${id}`)
+        .maybeSingle();
+      if (data) product = data;
+    } catch (e) {}
+  }
 
   if (!product) {
     return {
@@ -65,7 +102,20 @@ export default async function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = INITIAL_PRODUCTS.find((p) => p.id === id || p.slug === id) || INITIAL_PRODUCTS[0];
+  let product = INITIAL_PRODUCTS.find((p) => p.id === id || p.slug === id);
+
+  if (!product) {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .or(`id.eq.${id},slug.eq.${id}`)
+        .maybeSingle();
+      if (data) product = data;
+    } catch (e) {}
+  }
+
+  product = product || INITIAL_PRODUCTS[0];
 
   const productJsonLd = {
     '@context': 'https://schema.org',

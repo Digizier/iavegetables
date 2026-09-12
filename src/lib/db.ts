@@ -19,28 +19,22 @@ const dispatchEvent = (name: string, detail?: any) => {
   }
 };
 
+async function fetchWithTimeout(promise: any, timeoutMs = 3500): Promise<any> {
+  let timer: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Supabase request timeout')), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ==========================================
 // CATEGORIES
 // ==========================================
-export async function getCategories(): Promise<Category[]> {
-  try {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('id, name, name_urdu, slug, icon, sort_order')
-      .order('sort_order', { ascending: true });
-
-    if (!error && data && data.length > 0) {
-      const categories = data as Category[];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-      }
-      return categories;
-    }
-  } catch (err) {
-    console.warn('Supabase getCategories error, falling back to local:', err);
-  }
-
-  // Fallback to local storage or defaults ONLY if Supabase is offline / unreachable
+export function getLocalCategories(): Category[] {
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
     if (raw) {
@@ -49,9 +43,32 @@ export async function getCategories(): Promise<Category[]> {
         if (Array.isArray(local) && local.length > 0) return local;
       } catch (e) {}
     }
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
   }
   return INITIAL_CATEGORIES;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const fetchPromise = supabase
+      .from('categories')
+      .select('id, name, name_urdu, slug, icon, sort_order')
+      .order('sort_order', { ascending: true });
+
+    const { data, error } = await fetchWithTimeout(fetchPromise as any, 3500);
+
+    if (!error && data && data.length > 0) {
+      const categories = data as Category[];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+        dispatchEvent('ia_categories_updated', categories);
+      }
+      return categories;
+    }
+  } catch (err) {
+    // Graceful fallback to local cache
+  }
+
+  return getLocalCategories();
 }
 
 export async function adminSaveCategory(category: Partial<Category>): Promise<Category> {
@@ -138,26 +155,7 @@ export async function adminDeleteCategory(id: string): Promise<boolean> {
 // ==========================================
 // PRODUCTS
 // ==========================================
-export async function getProducts(): Promise<Product[]> {
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, category_id, name, name_urdu, slug, description, price, unit, weight_options, stock, is_active, is_featured, badge, thumbnail_url, images')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-
-    if (!error && data && data.length > 0) {
-      const products = data as Product[];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-      }
-      return products;
-    }
-  } catch (err) {
-    console.warn('Supabase getProducts error, falling back to local:', err);
-  }
-
-  // Fallback to local storage or defaults ONLY if Supabase is unreachable
+export function getLocalProducts(): Product[] {
   if (typeof window !== 'undefined') {
     const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     if (raw) {
@@ -166,9 +164,33 @@ export async function getProducts(): Promise<Product[]> {
         if (Array.isArray(local) && local.length > 0) return local.filter((p: any) => p.is_active);
       } catch (e) {}
     }
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(INITIAL_PRODUCTS));
   }
   return INITIAL_PRODUCTS;
+}
+
+export async function getProducts(): Promise<Product[]> {
+  try {
+    const fetchPromise = supabase
+      .from('products')
+      .select('id, category_id, name, name_urdu, slug, description, price, unit, weight_options, stock, is_active, is_featured, badge, thumbnail_url, images')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    const { data, error } = await fetchWithTimeout(fetchPromise as any, 4000);
+
+    if (!error && data && data.length > 0) {
+      const products = data as Product[];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+        dispatchEvent('ia_products_updated', products);
+      }
+      return products;
+    }
+  } catch (err) {
+    // Graceful fallback to local cache
+  }
+
+  return getLocalProducts();
 }
 
 export async function getAllProductsAdmin(): Promise<Product[]> {
@@ -339,32 +361,38 @@ export async function adminBulkUpdatePrices(updates: { id: string; price: number
 // ==========================================
 // SHOP SETTINGS
 // ==========================================
-export async function getShopSettings(): Promise<ShopSettings> {
-  try {
-    const { data, error } = await supabase
-      .from('shop_settings')
-      .select('id, shop_name, shop_subtitle, ntn_number, phone_number, whatsapp_number, shop_address, google_maps_url, plus_code, latitude, longitude, delivery_fee, free_delivery_threshold, delivery_zones, payment_methods, admin_pin')
-      .eq('id', 'main_settings')
-      .single();
-
-    if (!error && data) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
-      }
-      return data as ShopSettings;
-    }
-  } catch (err) {
-    console.warn('Supabase settings error, falling back:', err);
-  }
-
+export function getLocalSettings(): ShopSettings {
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (local) {
       try { return JSON.parse(local); } catch (e) {}
     }
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_SETTINGS));
   }
   return INITIAL_SETTINGS;
+}
+
+export async function getShopSettings(): Promise<ShopSettings> {
+  try {
+    const fetchPromise = supabase
+      .from('shop_settings')
+      .select('id, shop_name, shop_subtitle, ntn_number, phone_number, whatsapp_number, shop_address, google_maps_url, plus_code, latitude, longitude, delivery_fee, free_delivery_threshold, delivery_zones, payment_methods, admin_pin')
+      .eq('id', 'main_settings')
+      .single();
+
+    const { data, error } = await fetchWithTimeout(fetchPromise as any, 3500);
+
+    if (!error && data) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
+        dispatchEvent('ia_settings_updated', data);
+      }
+      return data as ShopSettings;
+    }
+  } catch (err) {
+    // Graceful fallback to local cache
+  }
+
+  return getLocalSettings();
 }
 
 export async function adminSaveSettings(settings: Partial<ShopSettings>): Promise<ShopSettings> {
@@ -405,30 +433,36 @@ export async function adminSaveSettings(settings: Partial<ShopSettings>): Promis
 // ==========================================
 // HERO BANNER
 // ==========================================
-export async function getHeroBanner(): Promise<HeroBanner> {
-  try {
-    const { data, error } = await supabase
-      .from('hero_banners')
-      .select('id, headline, subheadline, ticker_announcement, badge_text')
-      .eq('id', 'main_hero')
-      .single();
-
-    if (!error && data) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.HERO, JSON.stringify(data));
-      }
-      return data as HeroBanner;
-    }
-  } catch (err) {}
-
+export function getLocalHeroBanner(): HeroBanner {
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem(STORAGE_KEYS.HERO);
     if (local) {
       try { return JSON.parse(local); } catch (e) {}
     }
-    localStorage.setItem(STORAGE_KEYS.HERO, JSON.stringify(INITIAL_HERO));
   }
   return INITIAL_HERO;
+}
+
+export async function getHeroBanner(): Promise<HeroBanner> {
+  try {
+    const fetchPromise = supabase
+      .from('hero_banners')
+      .select('id, headline, subheadline, ticker_announcement, badge_text')
+      .eq('id', 'main_hero')
+      .single();
+
+    const { data, error } = await fetchWithTimeout(fetchPromise as any, 3500);
+
+    if (!error && data) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.HERO, JSON.stringify(data));
+        dispatchEvent('ia_hero_updated', data);
+      }
+      return data as HeroBanner;
+    }
+  } catch (err) {}
+
+  return getLocalHeroBanner();
 }
 
 export async function adminSaveHero(hero: Partial<HeroBanner>): Promise<HeroBanner> {

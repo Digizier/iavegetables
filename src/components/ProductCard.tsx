@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Minus, Check, Sparkles } from 'lucide-react';
 import { Product, CartItem } from '../lib/types';
@@ -19,6 +19,15 @@ export default function ProductCard({ product, onOpenCart }: ProductCardProps) {
   const [selectedWeight, setSelectedWeight] = useState<string>(weightOptions[0] || '1');
   const [currentQtyInCart, setCurrentQtyInCart] = useState<number>(0);
   const [addedAnimation, setAddedAnimation] = useState<boolean>(false);
+
+  const optimizedThumb = useMemo(() => {
+    const src = product.thumbnail_url;
+    if (!src) return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&auto=format&fit=crop&q=75';
+    if (src.includes('images.unsplash.com')) {
+      return src.replace(/w=\d+/, 'w=400').replace(/q=\d+/, 'q=75');
+    }
+    return src;
+  }, [product.thumbnail_url]);
 
   // Compute proportional price for selected weight
   const weightMultiplier = parseFloat(selectedWeight) || 1;
@@ -104,13 +113,14 @@ export default function ProductCard({ product, onOpenCart }: ProductCardProps) {
         className="relative aspect-square w-full rounded-xl overflow-hidden bg-gray-50 mb-2.5 flex items-center justify-center block cursor-pointer"
       >
         <img
-          src={product.thumbnail_url}
+          src={optimizedThumb}
           alt={`${product.name} ${product.name_urdu ? `(${product.name_urdu})` : ''} - Fresh Vegetable Karachi`}
           loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             (e.target as HTMLImageElement).src =
-              'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80';
+              'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&auto=format&fit=crop&q=75';
           }}
         />
       </Link>

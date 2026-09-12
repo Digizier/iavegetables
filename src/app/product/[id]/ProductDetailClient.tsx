@@ -22,7 +22,7 @@ import {
   Info
 } from 'lucide-react';
 import { Product, Category, CartItem, ShopSettings } from '../../../lib/types';
-import { getProducts, getCategories, getShopSettings, getLocalCart, saveLocalCart } from '../../../lib/db';
+import { getProducts, getCategories, getShopSettings, getLocalCart, saveLocalCart, getLocalProducts, getLocalCategories, getLocalSettings } from '../../../lib/db';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_SETTINGS } from '../../../lib/seedData';
 import ProductCard from '../../../components/ProductCard';
 
@@ -33,10 +33,10 @@ interface ProductDetailClientProps {
 export default function ProductDetailClient({ id }: ProductDetailClientProps) {
   const router = useRouter();
 
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [settings, setSettings] = useState<ShopSettings>(INITIAL_SETTINGS);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [products, setProducts] = useState<Product[]>(() => getLocalProducts());
+  const [categories, setCategories] = useState<Category[]>(() => getLocalCategories());
+  const [settings, setSettings] = useState<ShopSettings>(() => getLocalSettings());
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Active product
   const product = useMemo(() => {
@@ -63,10 +63,15 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
   }, [product, productImages]);
 
   useEffect(() => {
+    // Instant re-read from local storage upon mount
+    setProducts(getLocalProducts());
+    setCategories(getLocalCategories());
+    setSettings(getLocalSettings());
+
     Promise.all([getProducts(), getCategories(), getShopSettings()]).then(([prods, cats, sett]) => {
-      setProducts(prods);
-      setCategories(cats);
-      setSettings(sett);
+      if (prods && prods.length > 0) setProducts(prods);
+      if (cats && cats.length > 0) setCategories(cats);
+      if (sett) setSettings(sett);
       setLoading(false);
     });
 

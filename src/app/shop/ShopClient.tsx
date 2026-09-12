@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, ArrowUpDown, X, Sparkles, Filter, Leaf, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
-import { getCategories, getProducts } from '../../lib/db';
+import { getCategories, getProducts, getLocalCategories, getLocalProducts } from '../../lib/db';
 import { Category, Product } from '../../lib/types';
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from '../../lib/seedData';
 
@@ -13,19 +13,24 @@ function ShopContent() {
   const initialCategory = searchParams.get('cat') || 'all';
   const initialQuery = searchParams.get('q') || '';
 
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>(() => getLocalCategories());
+  const [products, setProducts] = useState<Product[]>(() => getLocalProducts());
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery);
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'name'>('featured');
   const [showInStockOnly, setShowInStockOnly] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState<boolean>(false);
 
   useEffect(() => {
+    // Instant re-read from local storage upon mount
+    setCategories(getLocalCategories());
+    setProducts(getLocalProducts());
+
+    // Background asynchronous revalidation
     Promise.all([getCategories(), getProducts()]).then(([catData, prodData]) => {
-      setCategories(catData);
-      setProducts(prodData);
+      if (catData && catData.length > 0) setCategories(catData);
+      if (prodData && prodData.length > 0) setProducts(prodData);
       setLoading(false);
     });
 
