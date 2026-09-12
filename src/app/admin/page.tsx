@@ -32,7 +32,8 @@ import {
   Menu,
   ChevronRight,
   ShieldCheck,
-  Scale
+  Scale,
+  TrendingUp
 } from 'lucide-react';
 import {
   getAllProductsAdmin,
@@ -566,6 +567,16 @@ export default function AdminPage() {
             </button>
 
             <Link
+              href="/admin/products-list"
+              className="flex items-center gap-1.5 text-xs font-black text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-2 rounded-xl transition-colors shadow-2xs"
+              title="Open Quick Daily Produce Price Updater"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline">⚡ Daily Rates</span>
+              <span className="sm:hidden">⚡ Rates</span>
+            </Link>
+
+            <Link
               href="/"
               target="_blank"
               className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-2 rounded-xl transition-colors"
@@ -658,6 +669,22 @@ export default function AdminPage() {
                 );
               })}
             </nav>
+
+            {/* Quick Price List Direct Link */}
+            <div className="pt-2 border-t border-gray-100">
+              <Link
+                href="/admin/products-list"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <TrendingUp className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>⚡ Daily Price List</span>
+                </div>
+                <span className="text-[10px] font-black bg-amber-200/90 text-amber-900 px-1.5 py-0.5 rounded-md">
+                  Fast
+                </span>
+              </Link>
+            </div>
           </div>
 
           {/* Bottom of Sidebar */}
@@ -712,9 +739,15 @@ export default function AdminPage() {
                   <h2 className="text-xl font-black text-gray-900">Store Dashboard</h2>
                   <p className="text-xs text-gray-500">Live operational overview for I.A Vegetables Karachi</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Physical Store:</span>
-                  <span className="text-xs font-bold text-gray-800 bg-white px-2.5 py-1 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link
+                    href="/admin/products-list"
+                    className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-black py-1.5 px-3 rounded-xl flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>⚡ Daily Price Updater</span>
+                  </Link>
+                  <span className="text-xs font-bold text-gray-800 bg-white px-2.5 py-1.5 rounded-xl border border-gray-200">
                     NTN # {settings.ntn_number || '4260196-7'} • SITE Town
                   </span>
                 </div>
@@ -934,15 +967,25 @@ export default function AdminPage() {
                   </select>
                 </div>
 
-                {/* Add Vegetable Button */}
-                <button
-                  type="button"
-                  onClick={() => openProductModal()}
-                  className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white text-xs font-black py-3 sm:py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Add Fresh Vegetable</span>
-                </button>
+                {/* Action Buttons: Quick Price List + Add Produce */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  <Link
+                    href="/admin/products-list"
+                    className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white text-xs font-black py-3 sm:py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    <span>⚡ Quick Daily Price List</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => openProductModal()}
+                    className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white text-xs font-black py-3 sm:py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add Produce</span>
+                  </button>
+                </div>
               </div>
 
               {/* Mobile Card List View (Phones & Tablets - Zero horizontal scrolling!) */}

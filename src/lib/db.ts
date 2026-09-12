@@ -298,6 +298,44 @@ export async function adminDeleteProduct(id: string): Promise<boolean> {
   return true;
 }
 
+export async function adminBulkUpdatePrices(updates: { id: string; price: number }[]): Promise<boolean> {
+  if (!updates || updates.length === 0) return true;
+
+  // 1. Sync Local storage immediately so UI and client pages reflect changes instantly
+  if (typeof window !== 'undefined') {
+    const current = await getAllProductsAdmin();
+    const updateMap = new Map(updates.map(u => [u.id, u.price]));
+    const nextList = current.map(p => {
+      if (updateMap.has(p.id)) {
+        return { ...p, price: updateMap.get(p.id)! };
+      }
+      return p;
+    });
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
+    dispatchEvent('ia_products_updated', nextList);
+  }
+
+  // 2. Sync to Supabase in parallel batches
+  try {
+    const chunkSize = 15;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const chunk = updates.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map(u =>
+          supabase
+            .from('products')
+            .update({ price: u.price })
+            .eq('id', u.id)
+        )
+      );
+    }
+  } catch (err) {
+    console.warn('Supabase bulk update prices error:', err);
+  }
+
+  return true;
+}
+
 // ==========================================
 // SHOP SETTINGS
 // ==========================================
