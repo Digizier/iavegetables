@@ -102,31 +102,28 @@ export default function HomePage() {
     };
   }, []);
 
+  const featuredProducts = useMemo(() => products.filter((p) => p.is_featured && p.is_active), [products]);
+  const topFeaturedProducts = useMemo(() => featuredProducts.slice(0, 4), [featuredProducts]);
+  const topFeaturedIds = useMemo(() => new Set(topFeaturedProducts.map((p) => p.id)), [topFeaturedProducts]);
+
   // Filter products by selected category
   const filteredProducts = useMemo(() => {
-    let list = selectedCategory === 'all'
-      ? products
-      : products.filter((p) => {
-          const cat = categories.find((c) => c.slug === selectedCategory);
-          return cat ? (p.category_id === cat.id || p.category_id === cat.slug) : true;
-        });
-
-    // When viewing all products, prioritize featured items at the top
     if (selectedCategory === 'all') {
-      list = [...list].sort((a, b) => {
-        if (a.is_featured && !b.is_featured) return -1;
-        if (!a.is_featured && b.is_featured) return 1;
-        return 0;
-      });
+      // Exclude the 4 featured products already highlighted in the top section
+      // so customers see unique items in "Today's Fresh Harvest" without duplicate repetition
+      return products.filter((p) => p.is_active && !topFeaturedIds.has(p.id));
     }
-    return list;
-  }, [products, selectedCategory, categories]);
+    return products.filter((p) => {
+      if (!p.is_active) return false;
+      const cat = categories.find((c) => c.slug === selectedCategory);
+      return cat ? (p.category_id === cat.id || p.category_id === cat.slug) : true;
+    });
+  }, [products, selectedCategory, categories, topFeaturedIds]);
 
   // Limit homepage to 12 latest/active items (3 clean rows of 4 on desktop, 6 rows of 2 on mobile)
   const displayedProducts = filteredProducts.slice(0, 12);
   const activeCategoryObj = categories.find((c) => c.slug === selectedCategory);
 
-  const featuredProducts = useMemo(() => products.filter((p) => p.is_featured && p.is_active), [products]);
   const cleanPhone = settings.whatsapp_number?.replace(/[^0-9]/g, '') || '923413989260';
 
   return (
@@ -241,7 +238,7 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
-              {featuredProducts.slice(0, 4).map((product) => (
+              {topFeaturedProducts.map((product) => (
                 <ProductCard key={`featured-${product.id}`} product={product} />
               ))}
             </div>
@@ -270,7 +267,7 @@ export default function HomePage() {
             href={selectedCategory === 'all' ? '/shop' : `/shop?cat=${selectedCategory}`}
             className="text-xs text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1 hover:underline"
           >
-            <span>View All ({filteredProducts.length})</span>
+            <span>View All ({selectedCategory === 'all' ? products.filter((p) => p.is_active).length : filteredProducts.length})</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
