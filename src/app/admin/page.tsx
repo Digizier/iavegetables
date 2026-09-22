@@ -2506,9 +2506,9 @@ export default function AdminPage() {
         itemType={deleteTarget?.type}
         description={
           deleteTarget?.type === 'order'
-            ? 'This customer order and all its items will be permanently erased from Supabase and order records.'
+            ? 'This customer order and all its items will be permanently erased from the store database and order records.'
             : deleteTarget?.type === 'category'
-            ? 'This category will be permanently removed from your catalog and Supabase. Associated vegetables will be safely re-assigned.'
+            ? 'This category will be permanently removed from your catalog and database. Associated vegetables will be safely re-assigned.'
             : deleteTarget?.type === 'product'
             ? 'This vegetable will be permanently deleted from your storefront catalog, search index, and database.'
             : 'This coupon discount code will be removed from database and can no longer be redeemed by customers.'

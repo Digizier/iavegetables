@@ -3,12 +3,12 @@ import { Product, Category, Order, OrderItem, ShopSettings, HeroBanner, Coupon, 
 import { INITIAL_CATEGORIES, INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_HERO, INITIAL_COUPONS } from './seedData';
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'ia_products_data_v1',
-  CATEGORIES: 'ia_categories_data_v1',
-  SETTINGS: 'ia_shop_settings_v1',
-  HERO: 'ia_hero_banner_v1',
-  COUPONS: 'ia_coupons_data_v1',
-  ORDERS: 'ia_orders_data_v1',
+  PRODUCTS: 'ia_products_data_v2',
+  CATEGORIES: 'ia_categories_data_v2',
+  SETTINGS: 'ia_shop_settings_v2',
+  HERO: 'ia_hero_banner_v2',
+  COUPONS: 'ia_coupons_data_v2',
+  ORDERS: 'ia_orders_data_v2',
   CART: 'ia_cart_items_v1',
   ADMIN_AUTH: 'ia_admin_auth_session'
 };
@@ -19,10 +19,10 @@ const dispatchEvent = (name: string, detail?: any) => {
   }
 };
 
-async function fetchWithTimeout(promise: any, timeoutMs = 3500): Promise<any> {
+async function fetchWithTimeout(promise: any, timeoutMs = 5000): Promise<any> {
   let timer: any;
   const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error('Supabase request timeout')), timeoutMs);
+    timer = setTimeout(() => reject(new Error('Database request timeout')), timeoutMs);
   });
   try {
     return await Promise.race([promise, timeoutPromise]);
@@ -36,13 +36,14 @@ async function fetchWithTimeout(promise: any, timeoutMs = 3500): Promise<any> {
 // ==========================================
 export function getLocalCategories(): Category[] {
   if (typeof window !== 'undefined') {
-    const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    if (raw) {
-      try {
+    try {
+      localStorage.removeItem('ia_categories_data_v1');
+      const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (raw) {
         const local = JSON.parse(raw);
         if (Array.isArray(local) && local.length > 0) return local;
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
   }
   return INITIAL_CATEGORIES;
 }
@@ -109,18 +110,30 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
     dispatchEvent('ia_categories_updated', nextList);
   }
 
-  // 2. Sync Supabase
+  // 2. Sync to Database
   try {
-    await supabase.from('categories').upsert({
-      id: updated.id,
-      name: updated.name,
-      name_urdu: updated.name_urdu,
-      slug: updated.slug,
-      icon: updated.icon,
-      sort_order: updated.sort_order,
-    });
+    if (category.id) {
+      const { error: updateErr } = await supabase.from('categories').update({
+        name: updated.name,
+        name_urdu: updated.name_urdu,
+        slug: updated.slug,
+        icon: updated.icon,
+        sort_order: updated.sort_order,
+      }).eq('id', updated.id);
+      if (updateErr) console.error('Database update category error:', updateErr);
+    } else {
+      const { error: insertErr } = await supabase.from('categories').insert({
+        id: updated.id,
+        name: updated.name,
+        name_urdu: updated.name_urdu,
+        slug: updated.slug,
+        icon: updated.icon,
+        sort_order: updated.sort_order,
+      });
+      if (insertErr) console.error('Database insert category error:', insertErr);
+    }
   } catch (err) {
-    console.warn('Supabase upsert category error:', err);
+    console.error('Database category save error:', err);
   }
 
   return updated;
@@ -157,18 +170,25 @@ export async function adminDeleteCategory(id: string): Promise<boolean> {
 // ==========================================
 export function getLocalProducts(): Product[] {
   if (typeof window !== 'undefined') {
-    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (raw) {
-      try {
+    try {
+      localStorage.removeItem('ia_products_data_v1');
+      const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+      if (raw) {
         const local = JSON.parse(raw);
-        if (Array.isArray(local) && local.length > 0) return local.filter((p: any) => p.is_active);
-      } catch (e) {}
-    }
+        if (Array.isArray(local) && local.length > 0) {
+          // Verify it does not contain the old dummy seed prod-1
+          const isDummySeed = local.some((p: any) => p.id === 'prod-1' && p.name === 'Red Potatoes (Aloo)');
+          if (!isDummySeed) {
+            return local.filter((p: any) => p.is_active);
+          }
+        }
+      }
+    } catch (e) {}
   }
-  return INITIAL_PRODUCTS;
+  return [];
 }
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(forceRefresh = false): Promise<Product[]> {
   try {
     const fetchPromise = supabase
       .from('products')
@@ -176,7 +196,7 @@ export async function getProducts(): Promise<Product[]> {
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
-    const { data, error } = await fetchWithTimeout(fetchPromise as any, 4000);
+    const { data, error } = await fetchWithTimeout(fetchPromise as any, 6000);
 
     if (!error && data && data.length > 0) {
       const products = data as Product[];
@@ -187,7 +207,7 @@ export async function getProducts(): Promise<Product[]> {
       return products;
     }
   } catch (err) {
-    // Graceful fallback to local cache
+    console.warn('Realtime fetchProducts fallback:', err);
   }
 
   return getLocalProducts();
@@ -208,21 +228,10 @@ export async function getAllProductsAdmin(): Promise<Product[]> {
       return products;
     }
   } catch (err) {
-    console.warn('Supabase admin products error:', err);
+    console.warn('Admin products fetch error:', err);
   }
 
-  // Fallback to local storage or defaults ONLY if Supabase is unreachable
-  if (typeof window !== 'undefined') {
-    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (raw) {
-      try {
-        const local = JSON.parse(raw);
-        if (Array.isArray(local) && local.length > 0) return local;
-      } catch (e) {}
-    }
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(INITIAL_PRODUCTS));
-  }
-  return INITIAL_PRODUCTS;
+  return getLocalProducts();
 }
 
 export async function adminSaveProduct(product: Partial<Product>): Promise<Product> {
@@ -246,9 +255,36 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
       thumbnail_url: product.thumbnail_url || product.images?.[0] || current[index]?.thumbnail_url || initialThumb,
       images: initialImages,
     } as Product;
+
+    // 1. Direct UPDATE in database for existing product
+    try {
+      const { error: updateErr } = await supabase.from('products').update({
+        category_id: updated.category_id || 'cat-1',
+        name: updated.name,
+        name_urdu: updated.name_urdu || '',
+        slug: updated.slug,
+        description: updated.description || '',
+        price: updated.price,
+        unit: updated.unit || 'kg',
+        weight_options: updated.weight_options || ['0.5', '1', '2', '5'],
+        stock: updated.stock,
+        is_active: updated.is_active ?? true,
+        is_featured: updated.is_featured ?? false,
+        badge: updated.badge || '',
+        thumbnail_url: updated.thumbnail_url,
+        images: updated.images,
+      }).eq('id', updated.id);
+
+      if (updateErr) {
+        console.error('Database update product error:', updateErr);
+      }
+    } catch (err) {
+      console.error('Database update error:', err);
+    }
   } else {
+    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `prod-${Date.now()}`;
     updated = {
-      id: `prod-${Date.now()}`,
+      id: newId,
       category_id: product.category_id || 'cat-1',
       name: product.name || 'Fresh Vegetable',
       name_urdu: product.name_urdu || '',
@@ -264,9 +300,36 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
       thumbnail_url: initialThumb,
       images: initialImages,
     };
+
+    // 1. Direct INSERT into database for new product
+    try {
+      const { error: insertErr } = await supabase.from('products').insert({
+        id: updated.id,
+        category_id: updated.category_id,
+        name: updated.name,
+        name_urdu: updated.name_urdu,
+        slug: updated.slug,
+        description: updated.description,
+        price: updated.price,
+        unit: updated.unit,
+        weight_options: updated.weight_options,
+        stock: updated.stock,
+        is_active: updated.is_active,
+        is_featured: updated.is_featured,
+        badge: updated.badge,
+        thumbnail_url: updated.thumbnail_url,
+        images: updated.images,
+      });
+
+      if (insertErr) {
+        console.error('Database insert product error:', insertErr);
+      }
+    } catch (err) {
+      console.error('Database insert error:', err);
+    }
   }
 
-  // 1. Sync Local immediately
+  // 2. Sync Local cache and dispatch event
   if (typeof window !== 'undefined') {
     const nextList = product.id
       ? current.map(p => p.id === updated.id ? updated : p)
@@ -275,46 +338,26 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
     dispatchEvent('ia_products_updated', nextList);
   }
 
-  // 2. Sync Supabase
-  try {
-    await supabase.from('products').upsert({
-      id: updated.id,
-      category_id: updated.category_id,
-      name: updated.name,
-      name_urdu: updated.name_urdu,
-      slug: updated.slug,
-      description: updated.description,
-      price: updated.price,
-      unit: updated.unit,
-      weight_options: updated.weight_options,
-      stock: updated.stock,
-      is_active: updated.is_active,
-      is_featured: updated.is_featured,
-      badge: updated.badge,
-      thumbnail_url: updated.thumbnail_url,
-      images: updated.images
-    });
-  } catch (err) {
-    console.warn('Supabase upsert product error:', err);
-  }
-
   return updated;
 }
 
 export async function adminDeleteProduct(id: string): Promise<boolean> {
-  // 1. Sync Local immediately
+  // 1. Sync database first
+  try {
+    const { error: deleteErr } = await supabase.from('products').delete().eq('id', id);
+    if (deleteErr) {
+      console.error('Database delete product error:', deleteErr);
+    }
+  } catch (err) {
+    console.error('Database delete error:', err);
+  }
+
+  // 2. Sync Local cache and dispatch event
   if (typeof window !== 'undefined') {
     const current = await getAllProductsAdmin();
     const nextList = current.filter(p => p.id !== id);
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
     dispatchEvent('ia_products_updated', nextList);
-  }
-
-  // 2. Sync Supabase
-  try {
-    await supabase.from('products').delete().eq('id', id);
-  } catch (err) {
-    console.warn('Supabase delete product error:', err);
   }
 
   return true;
@@ -776,4 +819,97 @@ export function setAppliedCoupon(code: string) {
     dispatchEvent('ia_coupon_applied', '');
   }
 }
+
+// ==========================================
+// REAL-TIME STORE SYNCHRONIZATION
+// ==========================================
+export function subscribeToStoreRealtime(callbacks?: {
+  onProductsUpdate?: (products: Product[]) => void;
+  onCategoriesUpdate?: (categories: Category[]) => void;
+  onSettingsUpdate?: (settings: ShopSettings) => void;
+}) {
+  if (typeof window === 'undefined') return () => {};
+
+  // 1. Supabase Postgres Changes Channel
+  const channel = supabase
+    .channel('ia_store_realtime_stream')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'products' },
+      async () => {
+        try {
+          const fresh = await getProducts();
+          if (fresh && fresh.length > 0) {
+            callbacks?.onProductsUpdate?.(fresh);
+          }
+        } catch (e) {}
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'categories' },
+      async () => {
+        try {
+          const fresh = await getCategories();
+          if (fresh && fresh.length > 0) {
+            callbacks?.onCategoriesUpdate?.(fresh);
+          }
+        } catch (e) {}
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'shop_settings' },
+      async () => {
+        try {
+          const fresh = await getShopSettings();
+          if (fresh) {
+            callbacks?.onSettingsUpdate?.(fresh);
+          }
+        } catch (e) {}
+      }
+    )
+    .subscribe();
+
+  // 2. Visibility & Focus Listener: auto-refresh when mobile/desktop user switches back or unlocks phone
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      getProducts().then((fresh) => {
+        if (fresh && fresh.length > 0) callbacks?.onProductsUpdate?.(fresh);
+      }).catch(() => {});
+      getCategories().then((fresh) => {
+        if (fresh && fresh.length > 0) callbacks?.onCategoriesUpdate?.(fresh);
+      }).catch(() => {});
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibility);
+
+  // 3. Storage event listener for instant multi-tab sync on same device
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEYS.PRODUCTS && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          callbacks?.onProductsUpdate?.(parsed);
+        }
+      } catch (err) {}
+    }
+    if (e.key === STORAGE_KEYS.CATEGORIES && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          callbacks?.onCategoriesUpdate?.(parsed);
+        }
+      } catch (err) {}
+    }
+  };
+  window.addEventListener('storage', handleStorage);
+
+  return () => {
+    supabase.removeChannel(channel);
+    document.removeEventListener('visibilitychange', handleVisibility);
+    window.removeEventListener('storage', handleStorage);
+  };
+}
+
 

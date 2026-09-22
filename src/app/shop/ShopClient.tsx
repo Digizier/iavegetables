@@ -4,9 +4,9 @@ import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, ArrowUpDown, X, Sparkles, Filter, Leaf, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
-import { getCategories, getProducts, getLocalCategories, getLocalProducts } from '../../lib/db';
+import { getCategories, getProducts, getLocalCategories, getLocalProducts, subscribeToStoreRealtime } from '../../lib/db';
 import { Category, Product } from '../../lib/types';
-import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from '../../lib/seedData';
+import { INITIAL_CATEGORIES } from '../../lib/seedData';
 
 function ShopContent() {
   const searchParams = useSearchParams();
@@ -19,30 +19,57 @@ function ShopContent() {
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery);
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'name'>('featured');
   const [showInStockOnly, setShowInStockOnly] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(() => getLocalProducts().length === 0);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState<boolean>(false);
 
   useEffect(() => {
     // Instant re-read from local storage upon mount
+    const localProds = getLocalProducts();
     setCategories(getLocalCategories());
-    setProducts(getLocalProducts());
+    if (localProds.length > 0) {
+      setProducts(localProds);
+      setLoading(false);
+    }
 
     // Background asynchronous revalidation
     Promise.all([getCategories(), getProducts()]).then(([catData, prodData]) => {
       if (catData && catData.length > 0) setCategories(catData);
-      if (prodData && prodData.length > 0) setProducts(prodData);
-      setLoading(false);
+      if (prodData && prodData.length > 0) {
+        setProducts(prodData);
+        setLoading(false);
+      }
     });
 
-    const handleCatUpdate = (e: any) => setCategories(e.detail || INITIAL_CATEGORIES);
-    const handleProdUpdate = (e: any) => setProducts(e.detail || INITIAL_PRODUCTS);
+    const handleCatUpdate = (e: any) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) setCategories(e.detail);
+    };
+    const handleProdUpdate = (e: any) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) {
+        setProducts(e.detail);
+        setLoading(false);
+      }
+    };
 
     window.addEventListener('ia_categories_updated', handleCatUpdate);
     window.addEventListener('ia_products_updated', handleProdUpdate);
 
+    // Multi-device realtime subscription
+    const unsubscribe = subscribeToStoreRealtime({
+      onProductsUpdate: (fresh) => {
+        if (fresh && fresh.length > 0) {
+          setProducts(fresh);
+          setLoading(false);
+        }
+      },
+      onCategoriesUpdate: (fresh) => {
+        if (fresh && fresh.length > 0) setCategories(fresh);
+      },
+    });
+
     return () => {
       window.removeEventListener('ia_categories_updated', handleCatUpdate);
       window.removeEventListener('ia_products_updated', handleProdUpdate);
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
@@ -255,7 +282,18 @@ function ShopContent() {
       </div>
 
       {/* Vegetable Grid (12 Per Page) */}
-      {paginatedProducts.length > 0 ? (
+      {loading && products.length === 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white border border-gray-100 rounded-2xl p-3 animate-pulse space-y-3">
+              <div className="aspect-square w-full rounded-xl bg-gray-200" />
+              <div className="h-4 bg-gray-200 rounded w-3/4" />
+              <div className="h-3 bg-gray-100 rounded w-1/2" />
+              <div className="h-8 bg-gray-200 rounded-full w-full mt-2" />
+            </div>
+          ))}
+        </div>
+      ) : paginatedProducts.length > 0 ? (
         <div className="space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {paginatedProducts.map((product) => (

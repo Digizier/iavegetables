@@ -22,8 +22,8 @@ import {
   Info
 } from 'lucide-react';
 import { Product, Category, CartItem, ShopSettings } from '../../../lib/types';
-import { getProducts, getCategories, getShopSettings, getLocalCart, saveLocalCart, getLocalProducts, getLocalCategories, getLocalSettings } from '../../../lib/db';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_SETTINGS } from '../../../lib/seedData';
+import { getProducts, getCategories, getShopSettings, getLocalCart, saveLocalCart, getLocalProducts, getLocalCategories, getLocalSettings, subscribeToStoreRealtime } from '../../../lib/db';
+import { INITIAL_CATEGORIES, INITIAL_SETTINGS } from '../../../lib/seedData';
 import ProductCard from '../../../components/ProductCard';
 
 interface ProductDetailClientProps {
@@ -36,11 +36,11 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
   const [products, setProducts] = useState<Product[]>(() => getLocalProducts());
   const [categories, setCategories] = useState<Category[]>(() => getLocalCategories());
   const [settings, setSettings] = useState<ShopSettings>(() => getLocalSettings());
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(() => !getLocalProducts().some(p => p.id === id || p.slug === id));
 
   // Active product
   const product = useMemo(() => {
-    return products.find((p) => p.id === id || p.slug === id) || products[0] || INITIAL_PRODUCTS[0];
+    return products.find((p) => p.id === id || p.slug === id);
   }, [products, id]);
 
   // Weight mode: 'preset' or 'custom'
@@ -52,21 +52,30 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
   const [copiedToast, setCopiedToast] = useState<boolean>(false);
 
   const productImages = useMemo(() => {
+    if (!product) return [];
     if (product.images && product.images.length > 0) return product.images;
     return product.thumbnail_url ? [product.thumbnail_url] : [];
   }, [product]);
 
-  const [selectedImage, setSelectedImage] = useState<string>(product.thumbnail_url);
+  const [selectedImage, setSelectedImage] = useState<string>(product?.thumbnail_url || '');
 
   useEffect(() => {
-    setSelectedImage(product.thumbnail_url || productImages[0] || '');
+    if (product) {
+      setSelectedImage(product.thumbnail_url || productImages[0] || '');
+    }
   }, [product, productImages]);
 
   useEffect(() => {
     // Instant re-read from local storage upon mount
-    setProducts(getLocalProducts());
+    const localProds = getLocalProducts();
     setCategories(getLocalCategories());
     setSettings(getLocalSettings());
+    if (localProds.length > 0) {
+      setProducts(localProds);
+      if (localProds.some(p => p.id === id || p.slug === id)) {
+        setLoading(false);
+      }
+    }
 
     Promise.all([getProducts(), getCategories(), getShopSettings()]).then(([prods, cats, sett]) => {
       if (prods && prods.length > 0) setProducts(prods);
@@ -75,17 +84,34 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
       setLoading(false);
     });
 
-    const handleProdUpdate = (e: any) => setProducts(e.detail || INITIAL_PRODUCTS);
-    const handleSettUpdate = (e: any) => setSettings(e.detail || INITIAL_SETTINGS);
+    const handleProdUpdate = (e: any) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) {
+        setProducts(e.detail);
+        setLoading(false);
+      }
+    };
+    const handleSettUpdate = (e: any) => {
+      if (e.detail) setSettings(e.detail);
+    };
 
     window.addEventListener('ia_products_updated', handleProdUpdate);
     window.addEventListener('ia_settings_updated', handleSettUpdate);
 
+    const unsubscribe = subscribeToStoreRealtime({
+      onProductsUpdate: (fresh) => {
+        if (fresh && fresh.length > 0) {
+          setProducts(fresh);
+          setLoading(false);
+        }
+      },
+    });
+
     return () => {
       window.removeEventListener('ia_products_updated', handleProdUpdate);
       window.removeEventListener('ia_settings_updated', handleSettUpdate);
+      if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [id]);
 
   // Update default selected weight when product loads
   useEffect(() => {
@@ -105,14 +131,15 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
   }, [weightMode, selectedWeight, customWeight]);
 
   const effectiveWeightLabel = useMemo(() => {
+    if (!product) return '';
     if (weightMode === 'custom') {
       return `${effectiveWeightNum} ${product.unit}`;
     }
     return `${selectedWeight} ${product.unit}`;
-  }, [weightMode, effectiveWeightNum, selectedWeight, product.unit]);
+  }, [weightMode, effectiveWeightNum, selectedWeight, product?.unit]);
 
   // Price calculation
-  const unitPrice = Math.round(product.price * effectiveWeightNum);
+  const unitPrice = product ? Math.round(product.price * effectiveWeightNum) : 0;
   const totalPrice = unitPrice * quantity;
 
   // Category of current product
@@ -134,6 +161,7 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
 
   // Add to Cart
   const handleAddToCart = () => {
+    if (!product) return;
     const items = getLocalCart();
     const weightKey = weightMode === 'custom' ? `${effectiveWeightNum}` : selectedWeight;
     const existingIndex = items.findIndex(
@@ -174,13 +202,13 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
 
   // WhatsApp Order Link
   const cleanPhone = settings.whatsapp_number?.replace(/[^0-9]/g, '') || '923413989260';
-  const whatsappMessage = encodeURIComponent(
+  const whatsappMessage = product ? encodeURIComponent(
     `Assalam o Alaikum, I want to order fresh ${product.name} (${product.name_urdu || ''}):\n` +
     `• Weight: ${effectiveWeightLabel}\n` +
     `• Quantity: ${quantity} pack(s)\n` +
     `• Total: Rs. ${totalPrice}\n` +
     `Please confirm Karachi delivery timing.`
-  );
+  ) : '';
   const whatsappUrl = `https://wa.me/${cleanPhone}?text=${whatsappMessage}`;
 
   const handleShare = () => {
@@ -191,10 +219,42 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
     }
   };
 
-  if (loading) {
+  if (loading && !product) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16 text-center text-gray-500 text-sm">
-        Loading vegetable information...
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-10">
+        <div className="h-4 bg-gray-200 rounded w-48 animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start bg-white rounded-3xl p-5 sm:p-8 border border-gray-100 shadow-xs animate-pulse">
+          <div className="lg:col-span-5 space-y-4">
+            <div className="aspect-square w-full rounded-2xl bg-gray-200" />
+            <div className="flex gap-2">
+              <div className="w-16 h-16 rounded-xl bg-gray-200" />
+              <div className="w-16 h-16 rounded-xl bg-gray-200" />
+            </div>
+          </div>
+          <div className="lg:col-span-7 space-y-5">
+            <div className="h-8 bg-gray-200 rounded w-3/4" />
+            <div className="h-5 bg-gray-200 rounded w-1/3" />
+            <div className="h-10 bg-gray-200 rounded w-1/2" />
+            <div className="h-24 bg-gray-100 rounded-2xl" />
+            <div className="h-12 bg-gray-200 rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <div className="text-4xl">🥬</div>
+        <h2 className="text-xl font-bold text-gray-900">Vegetable Not Found</h2>
+        <p className="text-sm text-gray-500">The requested fresh vegetable could not be found or has been updated.</p>
+        <Link
+          href="/shop"
+          className="inline-block bg-brand-600 text-white font-bold text-xs px-6 py-3 rounded-full hover:bg-brand-700 transition-colors"
+        >
+          Browse All Fresh Produce
+        </Link>
       </div>
     );
   }
@@ -223,12 +283,19 @@ export default function ProductDetailClient({ id }: ProductDetailClientProps) {
         {/* Left Column: Product Image Gallery (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-50 border border-gray-100 shadow-xs group">
-            {product.badge && (
-              <span className="absolute top-3 left-3 z-10 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{product.badge}</span>
-              </span>
-            )}
+            <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 items-start">
+              {product.is_featured && (
+                <span className="bg-amber-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                  <span>⭐ Featured Produce</span>
+                </span>
+              )}
+              {product.badge && (
+                <span className="bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{product.badge}</span>
+                </span>
+              )}
+            </div>
 
             <img
               src={selectedImage || product.thumbnail_url}

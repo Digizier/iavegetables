@@ -99,13 +99,20 @@ export default function ProductCard({ product, onOpenCart }: ProductCardProps) {
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-2.5 sm:p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all group relative">
-      {/* Top Badge */}
-      {product.badge && (
-        <span className="absolute top-2 left-2 z-10 bg-amber-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs backdrop-blur-xs flex items-center gap-1">
-          <Sparkles className="w-2.5 h-2.5" />
-          {product.badge}
-        </span>
-      )}
+      {/* Top Badges */}
+      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 items-start pointer-events-none">
+        {product.is_featured && (
+          <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+            ⭐ Featured
+          </span>
+        )}
+        {product.badge && (
+          <span className="bg-emerald-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs backdrop-blur-xs flex items-center gap-1">
+            <Sparkles className="w-2.5 h-2.5" />
+            {product.badge}
+          </span>
+        )}
+      </div>
 
       {/* Image Container with subtle hover zoom - Click opens Product Detail */}
       <Link

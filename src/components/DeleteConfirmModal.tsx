@@ -58,7 +58,7 @@ export default function DeleteConfirmModal({
 
           <p className="text-xs text-gray-500 leading-relaxed pt-1">
             {description ||
-              `Are you sure you want to permanently delete this ${itemType}? This action will immediately remove it from your system and the Supabase database. This cannot be undone.`}
+              `Are you sure you want to permanently delete this ${itemType}? This action will immediately remove it from your store system and database. This cannot be undone.`}
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, Truck, ShieldCheck, Phone, CheckCircle2, ChevronRight, MessageCircle } from 'lucide-react';
 import CategoryScroller from '../components/CategoryScroller';
@@ -17,10 +17,11 @@ import {
   getLocalCategories, 
   getLocalProducts, 
   getLocalSettings, 
-  getLocalHeroBanner 
+  getLocalHeroBanner,
+  subscribeToStoreRealtime
 } from '../lib/db';
 import { Category, Product, ShopSettings, HeroBanner } from '../lib/types';
-import { INITIAL_CATEGORIES, INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_HERO } from '../lib/seedData';
+import { INITIAL_CATEGORIES, INITIAL_SETTINGS, INITIAL_HERO } from '../lib/seedData';
 
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>(() => getLocalCategories());
@@ -28,16 +29,20 @@ export default function HomePage() {
   const [settings, setSettings] = useState<ShopSettings>(() => getLocalSettings());
   const [hero, setHero] = useState<HeroBanner>(() => getLocalHeroBanner());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(() => getLocalProducts().length === 0);
 
   useEffect(() => {
-    // Instant re-read from local storage upon mount to avoid SSR hydration mismatch
+    // Instant re-read from local storage upon mount
+    const localProds = getLocalProducts();
     setCategories(getLocalCategories());
-    setProducts(getLocalProducts());
+    if (localProds.length > 0) {
+      setProducts(localProds);
+      setLoading(false);
+    }
     setSettings(getLocalSettings());
     setHero(getLocalHeroBanner());
 
-    // Background asynchronous revalidation with Supabase
+    // Background asynchronous revalidation with database
     Promise.all([
       getCategories(),
       getProducts(),
@@ -51,37 +56,77 @@ export default function HomePage() {
       setLoading(false);
     });
 
-    const handleCatUpdate = (e: any) => setCategories(e.detail || INITIAL_CATEGORIES);
-    const handleProdUpdate = (e: any) => setProducts(e.detail || INITIAL_PRODUCTS);
-    const handleSettUpdate = (e: any) => setSettings(e.detail || INITIAL_SETTINGS);
-    const handleHeroUpdate = (e: any) => setHero(e.detail || INITIAL_HERO);
+    const handleCatUpdate = (e: any) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) setCategories(e.detail);
+    };
+    const handleProdUpdate = (e: any) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) {
+        setProducts(e.detail);
+        setLoading(false);
+      }
+    };
+    const handleSettUpdate = (e: any) => {
+      if (e.detail) setSettings(e.detail);
+    };
+    const handleHeroUpdate = (e: any) => {
+      if (e.detail) setHero(e.detail);
+    };
 
     window.addEventListener('ia_categories_updated', handleCatUpdate);
     window.addEventListener('ia_products_updated', handleProdUpdate);
     window.addEventListener('ia_settings_updated', handleSettUpdate);
     window.addEventListener('ia_hero_updated', handleHeroUpdate);
 
+    // Real-time synchronization across devices (mobile, desktop, new profiles)
+    const unsubscribe = subscribeToStoreRealtime({
+      onProductsUpdate: (fresh) => {
+        if (fresh && fresh.length > 0) {
+          setProducts(fresh);
+          setLoading(false);
+        }
+      },
+      onCategoriesUpdate: (fresh) => {
+        if (fresh && fresh.length > 0) setCategories(fresh);
+      },
+      onSettingsUpdate: (fresh) => {
+        if (fresh) setSettings(fresh);
+      },
+    });
+
     return () => {
       window.removeEventListener('ia_categories_updated', handleCatUpdate);
       window.removeEventListener('ia_products_updated', handleProdUpdate);
       window.removeEventListener('ia_settings_updated', handleSettUpdate);
       window.removeEventListener('ia_hero_updated', handleHeroUpdate);
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
   // Filter products by selected category
-  const filteredProducts = selectedCategory === 'all'
-    ? products
-    : products.filter((p) => {
-        const cat = categories.find((c) => c.slug === selectedCategory);
-        return cat ? (p.category_id === cat.id || p.category_id === cat.slug) : true;
+  const filteredProducts = useMemo(() => {
+    let list = selectedCategory === 'all'
+      ? products
+      : products.filter((p) => {
+          const cat = categories.find((c) => c.slug === selectedCategory);
+          return cat ? (p.category_id === cat.id || p.category_id === cat.slug) : true;
+        });
+
+    // When viewing all products, prioritize featured items at the top
+    if (selectedCategory === 'all') {
+      list = [...list].sort((a, b) => {
+        if (a.is_featured && !b.is_featured) return -1;
+        if (!a.is_featured && b.is_featured) return 1;
+        return 0;
       });
+    }
+    return list;
+  }, [products, selectedCategory, categories]);
 
   // Limit homepage to 12 latest/active items (3 clean rows of 4 on desktop, 6 rows of 2 on mobile)
   const displayedProducts = filteredProducts.slice(0, 12);
   const activeCategoryObj = categories.find((c) => c.slug === selectedCategory);
 
-  const featuredProducts = products.filter((p) => p.is_featured);
+  const featuredProducts = useMemo(() => products.filter((p) => p.is_featured && p.is_active), [products]);
   const cleanPhone = settings.whatsapp_number?.replace(/[^0-9]/g, '') || '923413989260';
 
   return (
@@ -165,6 +210,45 @@ export default function HomePage() {
         onSelectCategory={setSelectedCategory}
       />
 
+      {/* Featured Produce Showcase Section (Shows live whenever any product is marked 'Feature on Front Page' in Admin) */}
+      {selectedCategory === 'all' && featuredProducts.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4">
+          <div className="bg-gradient-to-r from-amber-500/10 via-emerald-50/60 to-brand-500/10 border border-amber-200/80 rounded-3xl p-4 sm:p-6 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 bg-amber-500 text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full shadow-xs mb-1.5">
+                  <Sparkles className="w-3 h-3" />
+                  <span>SPECIAL SELECTION • خاص انتخاب</span>
+                </div>
+                <h2 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                  <span>Featured Daily Produce</span>
+                  <span className="text-xs text-brand-700 font-bold font-urdu bg-brand-100/70 px-2 py-0.5 rounded-md">
+                    خاص منتخب سبزیاں
+                  </span>
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Hand-picked premium quality vegetables highlighted for today&apos;s Karachi orders.
+                </p>
+              </div>
+
+              <Link
+                href="/shop"
+                className="text-xs text-brand-700 hover:text-brand-800 font-black flex items-center gap-1 hover:underline"
+              >
+                <span>View All ({featuredProducts.length})</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              {featuredProducts.slice(0, 4).map((product) => (
+                <ProductCard key={`featured-${product.id}`} product={product} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Main Vegetable Grid (Fresh Basket 2-Column on Mobile!) */}
       <section className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
@@ -191,14 +275,27 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* 2-Col Grid on Mobile, 3-Col on Tablet, 4-Col on Desktop (12 latest items for clean 3-row grid) */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {displayedProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {/* Skeleton loading grid while products are being fetched from database */}
+        {loading && products.length === 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-white border border-gray-100 rounded-2xl p-2.5 sm:p-3.5 flex flex-col justify-between shadow-xs animate-pulse space-y-3">
+                <div className="aspect-square w-full rounded-xl bg-gray-200" />
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-8 bg-gray-200 rounded-full w-full mt-2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            {displayedProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
 
-        {filteredProducts.length === 0 && (
+        {!loading && filteredProducts.length === 0 && (
           <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-6">
             <div className="text-3xl mb-2">🥬</div>
             <h3 className="font-bold text-gray-800 text-sm">No vegetables found in this category</h3>
