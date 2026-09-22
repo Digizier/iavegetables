@@ -19,6 +19,17 @@ const dispatchEvent = (name: string, detail?: any) => {
   }
 };
 
+export function safeSetItem(key: string, value: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    console.warn(`[Storage] safeSetItem quota or permission fallback for ${key}:`, e);
+    return false;
+  }
+}
+
 async function fetchWithTimeout(promise: any, timeoutMs = 5000): Promise<any> {
   let timer: any;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -60,7 +71,7 @@ export async function getCategories(): Promise<Category[]> {
     if (!error && data && data.length > 0) {
       const categories = data as Category[];
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+        safeSetItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
         dispatchEvent('ia_categories_updated', categories);
       }
       return categories;
@@ -106,7 +117,7 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
     const nextList = category.id 
       ? current.map(c => c.id === updated.id ? updated : c)
       : [...current, updated];
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(nextList));
     dispatchEvent('ia_categories_updated', nextList);
   }
 
@@ -144,13 +155,13 @@ export async function adminDeleteCategory(id: string): Promise<boolean> {
   if (typeof window !== 'undefined') {
     const current = await getCategories();
     const nextList = current.filter(c => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(nextList));
     dispatchEvent('ia_categories_updated', nextList);
 
     // Update any local products assigned to this category to fallback cat-1
     const prods = await getAllProductsAdmin();
     const updatedProds = prods.map(p => p.category_id === id ? { ...p, category_id: 'cat-1' } : p);
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProds));
+    safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProds));
     dispatchEvent('ia_products_updated', updatedProds);
   }
 
@@ -201,7 +212,7 @@ export async function getProducts(forceRefresh = false): Promise<Product[]> {
     if (!error && data && data.length > 0) {
       const products = data as Product[];
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+        safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
         dispatchEvent('ia_products_updated', products);
       }
       return products;
@@ -223,7 +234,7 @@ export async function getAllProductsAdmin(): Promise<Product[]> {
     if (!error && data && data.length > 0) {
       const products = data as Product[];
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+        safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
       }
       return products;
     }
@@ -334,7 +345,7 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
     const nextList = product.id
       ? current.map(p => p.id === updated.id ? updated : p)
       : [updated, ...current];
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
     dispatchEvent('ia_products_updated', nextList);
   }
 
@@ -356,7 +367,7 @@ export async function adminDeleteProduct(id: string): Promise<boolean> {
   if (typeof window !== 'undefined') {
     const current = await getAllProductsAdmin();
     const nextList = current.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
     dispatchEvent('ia_products_updated', nextList);
   }
 
@@ -376,7 +387,7 @@ export async function adminBulkUpdatePrices(updates: { id: string; price: number
       }
       return p;
     });
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(nextList));
     dispatchEvent('ia_products_updated', nextList);
   }
 
@@ -426,7 +437,7 @@ export async function getShopSettings(): Promise<ShopSettings> {
 
     if (!error && data) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
+        safeSetItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
         dispatchEvent('ia_settings_updated', data);
       }
       return data as ShopSettings;
@@ -466,7 +477,7 @@ export async function adminSaveSettings(settings: Partial<ShopSettings>): Promis
   }
 
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    safeSetItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     dispatchEvent('ia_settings_updated', updated);
   }
 
@@ -498,7 +509,7 @@ export async function getHeroBanner(): Promise<HeroBanner> {
 
     if (!error && data) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.HERO, JSON.stringify(data));
+        safeSetItem(STORAGE_KEYS.HERO, JSON.stringify(data));
         dispatchEvent('ia_hero_updated', data);
       }
       return data as HeroBanner;
@@ -523,7 +534,7 @@ export async function adminSaveHero(hero: Partial<HeroBanner>): Promise<HeroBann
   } catch (err) {}
 
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.HERO, JSON.stringify(updated));
+    safeSetItem(STORAGE_KEYS.HERO, JSON.stringify(updated));
     dispatchEvent('ia_hero_updated', updated);
   }
 
@@ -573,7 +584,7 @@ export async function adminSaveCoupon(coupon: Partial<Coupon>): Promise<Coupon> 
     const nextList = coupon.id 
       ? current.map(c => c.id === updated.id ? updated : c)
       : [...current, updated];
-    localStorage.setItem(STORAGE_KEYS.COUPONS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.COUPONS, JSON.stringify(nextList));
     dispatchEvent('ia_coupons_updated', nextList);
   }
 
@@ -588,7 +599,7 @@ export async function adminDeleteCoupon(id: string): Promise<boolean> {
   if (typeof window !== 'undefined') {
     const current = await getCoupons();
     const nextList = current.filter(c => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.COUPONS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.COUPONS, JSON.stringify(nextList));
     dispatchEvent('ia_coupons_updated', nextList);
   }
   return true;
@@ -612,7 +623,7 @@ export async function getOrders(): Promise<Order[]> {
       })) as Order[];
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+        safeSetItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
       }
       return orders;
     }
@@ -641,7 +652,7 @@ export async function getOrders(): Promise<Order[]> {
       })) as Order[];
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+        safeSetItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
       }
       return orders;
     }
@@ -721,7 +732,7 @@ export async function createOrder(
   if (typeof window !== 'undefined') {
     const current = await getOrders();
     const nextList = [newOrder, ...current.filter(o => o.id !== newOrder.id && o.order_number !== newOrder.order_number)];
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.ORDERS, JSON.stringify(nextList));
     dispatchEvent('ia_orders_updated', nextList);
   }
 
@@ -736,7 +747,7 @@ export async function adminUpdateOrderStatus(id: string, status: Order['status']
   if (typeof window !== 'undefined') {
     const current = await getOrders();
     const nextList = current.map(o => o.id === id ? { ...o, status } : o);
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.ORDERS, JSON.stringify(nextList));
     dispatchEvent('ia_orders_updated', nextList);
   }
   return true;
@@ -747,7 +758,7 @@ export async function adminDeleteOrder(id: string): Promise<boolean> {
   if (typeof window !== 'undefined') {
     const current = await getOrders();
     const nextList = current.filter(o => o.id !== id);
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(nextList));
+    safeSetItem(STORAGE_KEYS.ORDERS, JSON.stringify(nextList));
     dispatchEvent('ia_orders_updated', nextList);
   }
 
@@ -780,7 +791,7 @@ export function getLocalCart(): CartItem[] {
 
 export function saveLocalCart(items: CartItem[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(items));
+  safeSetItem(STORAGE_KEYS.CART, JSON.stringify(items));
   dispatchEvent('ia_cart_updated', items);
 }
 
@@ -812,7 +823,7 @@ export function getAppliedCoupon(): string {
 export function setAppliedCoupon(code: string) {
   if (typeof window === 'undefined') return;
   if (code) {
-    localStorage.setItem('ia_applied_coupon', code.toUpperCase().trim());
+    safeSetItem('ia_applied_coupon', code.toUpperCase().trim());
     dispatchEvent('ia_coupon_applied', code.toUpperCase().trim());
   } else {
     localStorage.removeItem('ia_applied_coupon');

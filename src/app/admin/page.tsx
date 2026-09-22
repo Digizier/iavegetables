@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Lock,
@@ -116,9 +116,24 @@ export default function AdminPage() {
     }
   }, []);
 
-  // 2. Fetch all admin data
-  const loadAllData = async () => {
-    setLoading(true);
+  const lastFetchTimeRef = useRef<number>(0);
+  const isFetchingRef = useRef<boolean>(false);
+
+  // 2. Fetch all admin data (Optimized with debouncing and smooth background refresh)
+  const loadAllData = async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastFetchTimeRef.current < 15000) {
+      return; // Skip redundant background calls within 15s to keep Supabase limits completely safe
+    }
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    lastFetchTimeRef.current = now;
+
+    // Only set loading true if products is empty on initial load, so UI never flickers blank
+    if (products.length === 0) {
+      setLoading(true);
+    }
+
     try {
       const [prods, cats, ords, sett, hr, coup] = await Promise.all([
         getAllProductsAdmin(),
@@ -128,39 +143,33 @@ export default function AdminPage() {
         getHeroBanner(),
         getCoupons(),
       ]);
-      setProducts(prods);
-      setCategories(cats);
-      setOrders(ords);
-      setSettings(sett);
-      setHero(hr);
-      setCoupons(coup);
+      if (prods && prods.length > 0) setProducts(prods);
+      if (cats && cats.length > 0) setCategories(cats);
+      if (ords) setOrders(ords);
+      if (sett) setSettings(sett);
+      if (hr) setHero(hr);
+      if (coup) setCoupons(coup);
     } catch (err) {
       console.warn('Error loading admin data:', err);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    loadAllData();
-
-    // Auto-sync whenever admin switches back to this browser window / tab
-    const handleSync = () => {
-      loadAllData();
-    };
+    loadAllData(true);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        loadAllData();
+        loadAllData(false);
       }
     };
 
-    window.addEventListener('focus', handleSync);
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      window.removeEventListener('focus', handleSync);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [isAuthenticated]);
